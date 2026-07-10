@@ -367,88 +367,27 @@ function setupButtons() {
                         currentActiveRecord = { serial, pin, used: true, formData: dataObj, submittedAt };
                     }
 
-                    // 3. Send email via Web3Forms AJAX with passport photo attachment
-                    let emailSentOk = false;
+                    // 3. Submit the form directly to FormSubmit so it reaches the email inbox
                     try {
-                        const WEB3FORMS_ACCESS_KEY = 'd0232a81-04eb-413e-9900-c1ffea88ddb4';
+                        const serialInput = document.getElementById('current-serial');
+                        if (serialInput) serialInput.value = serial;
 
-                        // Use FormData (not JSON) so we can attach the passport photo file
-                        const emailFormData = new FormData();
+                        const hiddenPinInput = document.getElementById('hidden-pin');
+                        if (hiddenPinInput) hiddenPinInput.value = pin;
 
-                        // Web3Forms required fields
-                        emailFormData.append('access_key', WEB3FORMS_ACCESS_KEY);
-                        emailFormData.append('subject', subject);
-                        emailFormData.append('from_name', 'Aslin Fashion School Portal');
-                        emailFormData.append('cc', 'generalfashionacademyaccra@gmail.com');
+                        const detailsInput = document.getElementById('fs-details');
+                        if (detailsInput) detailsInput.value = JSON.stringify(dataObj, null, 2);
 
-                        // Applicant Information
-                        emailFormData.append('Serial Number', serial);
-                        emailFormData.append('Full Name', `${dataObj.surname || ''} ${dataObj.firstname || ''} ${dataObj.othernames || ''}`.trim());
-                        emailFormData.append('Gender', dataObj.gender || 'N/A');
-                        emailFormData.append('Date of Birth', dataObj.dob || 'N/A');
-                        emailFormData.append('Place of Birth', dataObj.pob || 'N/A');
-                        emailFormData.append('Hometown', dataObj.hometown || 'N/A');
-                        emailFormData.append('Religion', dataObj.religion || 'N/A');
-                        emailFormData.append('Preferred Branch', dataObj.preferred_branch || 'N/A');
-                        emailFormData.append('Admission Batch', dataObj.admission_batch || 'N/A');
-                        emailFormData.append('Residential Status', dataObj.residential || 'N/A');
-                        emailFormData.append('Contact Address', dataObj.contact_address || 'N/A');
-                        emailFormData.append('Living Situation', dataObj.living_situation || 'N/A');
-                        emailFormData.append('Marketing Source', dataObj.marketing || 'N/A');
-                        emailFormData.append('Previous Fashion Experience', dataObj.first_time || 'N/A');
-                        emailFormData.append('Previous Fashion School', dataObj.previous_school || 'N/A');
+                        const fsSubject = document.getElementById('fs-subject');
+                        if (fsSubject) fsSubject.value = subject;
 
-                        // Parents / Guardians
-                        emailFormData.append('Father Name', dataObj.father_name || 'N/A');
-                        emailFormData.append('Father Occupation', dataObj.father_job || 'N/A');
-                        emailFormData.append('Father Phone', dataObj.father_phone || 'N/A');
-                        emailFormData.append('Mother Name', dataObj.mother_name || 'N/A');
-                        emailFormData.append('Mother Occupation', dataObj.mother_job || 'N/A');
-                        emailFormData.append('Mother Phone', dataObj.mother_phone || 'N/A');
-
-                        // Emergency Contact
-                        emailFormData.append('Emergency Contact Name', dataObj.emergency_name || 'N/A');
-                        emailFormData.append('Emergency Contact Phone', dataObj.emergency_phone || 'N/A');
-
-                        // Medical Info
-                        emailFormData.append('Doctor Name', dataObj.doctor_name || 'N/A');
-                        emailFormData.append('Doctor Phone', dataObj.doctor_phone || 'N/A');
-                        emailFormData.append('Asthmatic Patient', dataObj.asthma || 'N/A');
-                        emailFormData.append('NHIS Registered', dataObj.nhis || 'N/A');
-                        emailFormData.append('NHIS Card Number', dataObj.nhis_number || 'N/A');
-                        emailFormData.append('Other Needs', dataObj.other_needs || 'N/A');
-
-                        emailFormData.append('Submission Date', new Date().toLocaleString());
-
-                        // Attach the passport photo — Web3Forms will include it as an email attachment
-                        const passportInput = document.getElementById('passport-upload');
-                        const passportFile = passportInput && passportInput.files && passportInput.files[0]
-                            ? passportInput.files[0] : null;
-                        if (passportFile) {
-                            emailFormData.append('attachment', passportFile, passportFile.name);
-                        }
-
-                        // Do NOT set Content-Type header — browser sets it automatically with boundary for FormData
-                        const emailResponse = await fetch('https://api.web3forms.com/submit', {
-                            method: 'POST',
-                            headers: { 'Accept': 'application/json' },
-                            body: emailFormData
-                        });
-
-                        const emailResult = await emailResponse.json();
-                        if (emailResult.success) {
-                            emailSentOk = true;
-                            console.log('Email sent successfully via Web3Forms.');
-                        } else {
-                            console.warn('Web3Forms error:', emailResult.message);
-                            alert('⚠️ Email notification error: ' + emailResult.message + '\n\nThe application was still saved. Please contact the administrator.');
-                        }
-                    } catch (emailErr) {
-                        console.warn('Email sending failed:', emailErr);
-                        alert('⚠️ Could not send email notification: ' + emailErr.message + '\n\nThe application was still saved successfully.');
+                        form.submit();
+                        console.log('Submitted form directly to FormSubmit.');
+                    } catch (submitErr) {
+                        console.warn('FormSubmit submission error:', submitErr);
                     }
 
-                    // 4. Show success screen
+                    // 4. Show success screen locally as a fallback
                     formSection.classList.add('hidden');
                     document.getElementById('success-section').classList.remove('hidden');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
