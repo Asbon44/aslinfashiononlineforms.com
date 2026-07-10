@@ -167,6 +167,7 @@ function setupButtons() {
     const previewText = document.getElementById('preview-text');
     const downloadBtn = document.getElementById('btn-download');
     const btnSubmit = document.getElementById('btn-submit');
+    const btnOpenEmail = document.getElementById('btn-open-email');
 
     // Login Button Handler
     if (loginBtn) {
@@ -367,7 +368,7 @@ function setupButtons() {
                         currentActiveRecord = { serial, pin, used: true, formData: dataObj, submittedAt };
                     }
 
-                    // 3. Submit the form directly to FormSubmit so it reaches the email inbox
+                    // 3. Submit the form directly to FormSubmit and also open a mail draft for the applicant
                     try {
                         const serialInput = document.getElementById('current-serial');
                         if (serialInput) serialInput.value = serial;
@@ -381,8 +382,13 @@ function setupButtons() {
                         const fsSubject = document.getElementById('fs-subject');
                         if (fsSubject) fsSubject.value = subject;
 
+                        const applicantName = `${dataObj.surname || ''} ${dataObj.firstname || ''} ${dataObj.othernames || ''}`.trim() || 'Applicant';
+                        const mailBody = `Applicant: ${applicantName}\nSerial: ${serial}\n\n${JSON.stringify(dataObj, null, 2)}`;
+                        const mailtoLink = `mailto:aslinfashionschoolonlineforms@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`;
+
+                        window.open(mailtoLink, '_blank', 'noopener,noreferrer');
                         form.submit();
-                        console.log('Submitted form directly to FormSubmit.');
+                        console.log('Submitted form directly to FormSubmit and opened a mail draft.');
                     } catch (submitErr) {
                         console.warn('FormSubmit submission error:', submitErr);
                     }
@@ -420,6 +426,18 @@ function setupButtons() {
     if (downloadBtn) {
         downloadBtn.addEventListener('click', () => {
             if (currentActiveRecord) downloadFilledForm(currentActiveRecord);
+        });
+    }
+
+    // Email fallback button handler
+    if (btnOpenEmail) {
+        btnOpenEmail.addEventListener('click', () => {
+            const applicantName = `${document.querySelector('input[name="surname"]')?.value || ''} ${document.querySelector('input[name="firstname"]')?.value || ''}`.trim();
+            const applicantEmail = 'aslinfashionschoolonlineforms@gmail.com';
+            const subject = document.getElementById('fs-subject')?.value || 'Aslin Admission Application';
+            const details = document.getElementById('fs-details')?.value || 'Application submitted';
+            const mailtoLink = `mailto:${applicantEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Applicant: ${applicantName}\n\n${details}`)}`;
+            window.open(mailtoLink, '_blank', 'noopener,noreferrer');
         });
     }
 
