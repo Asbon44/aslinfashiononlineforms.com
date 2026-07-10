@@ -139,6 +139,22 @@ async function savePinToFirebase(serial, pin, formData = null) {
     }
 }
 
+async function saveAccraFormToFirebase(serial, formData = null) {
+    if (!db) return;
+    try {
+        const key = firebaseKey(serial);
+        const payload = {
+            ...(formData || {}),
+            serial,
+            submittedAt: (formData && formData.submittedAt) || new Date().toISOString(),
+        };
+        await db.ref('accra_forms/' + key).set(payload);
+        console.log('Saved application to admin accra_forms:', key);
+    } catch (error) {
+        console.warn('Firebase admin form save failed:', error);
+    }
+}
+
 // --- AUTO-INITIALIZE ON LOAD ---
 initDatabase();
 
@@ -285,17 +301,20 @@ function setupButtons() {
         console.error("Critical Error: Login button (btn-login) not found!");
     }
 
-    // Submit Button Handler
+    // Submit Handler
     let isSubmitting = false;
-    if (btnSubmit) {
-        btnSubmit.addEventListener('click', async () => {
+    if (form) {
+        const handleSubmit = async (e) => {
+            e.preventDefault();
             if (isSubmitting) return;
             if (!form.reportValidity()) return;
 
             isSubmitting = true;
-            btnSubmit.innerText = "Processing...";
-            btnSubmit.style.pointerEvents = "none";
-            btnSubmit.style.opacity = "0.7";
+            if (btnSubmit) {
+                btnSubmit.innerText = "Processing...";
+                btnSubmit.style.pointerEvents = "none";
+                btnSubmit.style.opacity = "0.7";
+            }
 
             const formData = new FormData(form);
             const dataObj = {};
@@ -315,106 +334,81 @@ function setupButtons() {
 
             let index = GFA_DB.findIndex(r => (r.serial || "").toString().trim().toUpperCase() === serial);
 
-            try {            // --- Main submission flow (wrapped for safety) ---
-                const submittedAt = new Date().toISOString();
-
-                try {
-                    if (index > -1 && GFA_DB[index].used === true) {
-                        alert("Already submitted on this device.");
-                        openForm(GFA_DB[index]);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        return;
-                    }
-
-                    if (index > -1) {
-                        GFA_DB[index].used = true;
-                        GFA_DB[index].formData = dataObj;
-                        GFA_DB[index].submittedAt = submittedAt;
-                    } else {
-                        GFA_DB.push({ serial, pin, used: true, formData: dataObj, submittedAt });
-                    }
-
-                    try {
-                        localStorage.setItem('gfa_database_v3', JSON.stringify(GFA_DB));
-                    } catch (e) {
-                        console.warn("Local storage write failed:", e);
-                    }
-
-                    // Prepare email fields
-                    const subject = `Aslin Admission: ${dataObj.admission_batch || 'Batch'} - ${dataObj.firstname || 'Applicant'} ${dataObj.surname || ''} (${serial})`;
-
-                    const fsSubject = document.getElementById('fs-subject');
-                    if (fsSubject) fsSubject.value = subject;
-
-                    dataObj.submittedAt = submittedAt;
-                    dataObj.serial = serial;
-
-                    // 1. Save to Firebase (primary storage)
-                    if (db) {
-                        try {
-                            await savePinToFirebase(serial, pin, dataObj);
-                            console.log('Saved to Firebase successfully.');
-                        } catch (fbErr) {
-                            console.warn('Firebase save failed:', fbErr);
-                        }
-                    }
-
-                    // 2. Update current active record
-                    if (currentActiveRecord) {
-                        currentActiveRecord.used = true;
-                        currentActiveRecord.formData = dataObj;
-                        currentActiveRecord.submittedAt = submittedAt;
-                    } else {
-                        currentActiveRecord = { serial, pin, used: true, formData: dataObj, submittedAt };
-                    }
-
-                    // 3. Submit the form directly to FormSubmit
-                    try {
-                        const serialInput = document.getElementById('current-serial');
-                        if (serialInput) serialInput.value = serial;
-
-                        const hiddenPinInput = document.getElementById('hidden-pin');
-                        if (hiddenPinInput) hiddenPinInput.value = pin;
-
-                        const detailsInput = document.getElementById('fs-details');
-                        if (detailsInput) detailsInput.value = JSON.stringify(dataObj, null, 2);
-
-                        const fsSubject = document.getElementById('fs-subject');
-                        if (fsSubject) fsSubject.value = subject;
-
-                        form.submit();
-                        console.log('Submitted form directly to FormSubmit.');
-                    } catch (submitErr) {
-                        console.warn('FormSubmit submission error:', submitErr);
-                    }
-
-                    // 4. Show success screen locally as a fallback
-                    formSection.classList.add('hidden');
-                    document.getElementById('success-section').classList.remove('hidden');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-                    // 5. Auto-generate admission letter PDF (removed as requested)
-                    // downloadAdmissionLetter();
-
-                } catch (submitErr) {
-                    console.error('Submission error:', submitErr);
-                    alert('An error occurred during submission. Please try again.');
-                } finally {
+            if (index > -1 && GFA_DB[index].used === true) {
+                alert("Already submitted on this device.");
+                openForm(GFA_DB[index]);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                isSubmitting = false;
+                if (btnSubmit) {
                     btnSubmit.innerText = "Submit Application";
                     btnSubmit.style.pointerEvents = "auto";
                     btnSubmit.style.opacity = "1";
-                    isSubmitting = false;
                 }
-            } catch (error) {
-                console.error("Critical failure:", error);
-                btnSubmit.innerText = "Submit Application";
-                btnSubmit.style.pointerEvents = "auto";
-                btnSubmit.style.opacity = "1";
-                isSubmitting = false;
+                return;
             }
-        });
+
+            const submittedAt = new Date().toISOString();
+            if (index > -1) {
+                GFA_DB[index].used = true;
+                GFA_DB[index].formData = dataObj;
+                GFA_DB[index].submittedAt = submittedAt;
+            } else {
+                GFA_DB.push({ serial, pin, used: true, formData: dataObj, submittedAt });
+            }
+
+            try {
+                localStorage.setItem('gfa_database_v3', JSON.stringify(GFA_DB));
+            } catch (e) {
+                console.warn("Local storage write failed:", e);
+            }
+
+            const subject = `Aslin Admission: ${dataObj.admission_batch || 'Batch'} - ${dataObj.firstname || 'Applicant'} ${dataObj.surname || ''} (${serial})`;
+            const fsSubject = document.getElementById('fs-subject');
+            if (fsSubject) fsSubject.value = subject;
+
+            dataObj.submittedAt = submittedAt;
+            dataObj.serial = serial;
+
+            if (db) {
+                try {
+                    await savePinToFirebase(serial, pin, dataObj);
+                } catch (fbErr) {
+                    console.warn('Firebase save failed:', fbErr);
+                }
+                try {
+                    await saveAccraFormToFirebase(serial, dataObj);
+                } catch (accraErr) {
+                    console.warn('Firebase admin form save failed:', accraErr);
+                }
+            }
+
+            if (currentActiveRecord) {
+                currentActiveRecord.used = true;
+                currentActiveRecord.formData = dataObj;
+                currentActiveRecord.submittedAt = submittedAt;
+            } else {
+                currentActiveRecord = { serial, pin, used: true, formData: dataObj, submittedAt };
+            }
+
+            const serialInput = document.getElementById('current-serial');
+            if (serialInput) serialInput.value = serial;
+
+            const hiddenPinInput = document.getElementById('hidden-pin');
+            if (hiddenPinInput) hiddenPinInput.value = pin;
+
+            const detailsInput = document.getElementById('fs-details');
+            if (detailsInput) detailsInput.value = JSON.stringify(dataObj, null, 2);
+
+            const fsSubjectInput = document.getElementById('fs-subject');
+            if (fsSubjectInput) fsSubjectInput.value = subject;
+
+            form.removeEventListener('submit', handleSubmit);
+            form.submit();
+        };
+
+        form.addEventListener('submit', handleSubmit);
     } else {
-        console.error("Critical Error: Submit button (btn-submit) not found!");
+        console.error("Critical Error: Admission form not found!");
     }
 
     // Download Button Handler
