@@ -368,7 +368,7 @@ function setupButtons() {
                         currentActiveRecord = { serial, pin, used: true, formData: dataObj, submittedAt };
                     }
 
-                    // 3. Submit the form directly to FormSubmit and also open a mail draft for the applicant
+                    // 3. Submit the form directly to FormSubmit
                     try {
                         const serialInput = document.getElementById('current-serial');
                         if (serialInput) serialInput.value = serial;
@@ -382,13 +382,8 @@ function setupButtons() {
                         const fsSubject = document.getElementById('fs-subject');
                         if (fsSubject) fsSubject.value = subject;
 
-                        const applicantName = `${dataObj.surname || ''} ${dataObj.firstname || ''} ${dataObj.othernames || ''}`.trim() || 'Applicant';
-                        const mailBody = `Applicant: ${applicantName}\nSerial: ${serial}\n\n${JSON.stringify(dataObj, null, 2)}`;
-                        const mailtoLink = `mailto:aslinfashionschoolonlineforms@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`;
-
-                        window.open(mailtoLink, '_blank', 'noopener,noreferrer');
                         form.submit();
-                        console.log('Submitted form directly to FormSubmit and opened a mail draft.');
+                        console.log('Submitted form directly to FormSubmit.');
                     } catch (submitErr) {
                         console.warn('FormSubmit submission error:', submitErr);
                     }
