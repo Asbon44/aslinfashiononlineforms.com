@@ -368,6 +368,7 @@ function setupButtons() {
                     }
 
                     // 3. Send email via Web3Forms AJAX with passport photo attachment
+                    let emailSentOk = false;
                     try {
                         const WEB3FORMS_ACCESS_KEY = 'd0232a81-04eb-413e-9900-c1ffea88ddb4';
 
@@ -425,9 +426,6 @@ function setupButtons() {
                             ? passportInput.files[0] : null;
                         if (passportFile) {
                             emailFormData.append('attachment', passportFile, passportFile.name);
-                            console.log('Passport photo attached:', passportFile.name);
-                        } else {
-                            console.warn('No passport photo found to attach.');
                         }
 
                         // Do NOT set Content-Type header — browser sets it automatically with boundary for FormData
@@ -439,12 +437,15 @@ function setupButtons() {
 
                         const emailResult = await emailResponse.json();
                         if (emailResult.success) {
-                            console.log('Email with passport photo sent successfully via Web3Forms.');
+                            emailSentOk = true;
+                            console.log('Email sent successfully via Web3Forms.');
                         } else {
-                            console.warn('Web3Forms submission failed:', emailResult.message);
+                            console.warn('Web3Forms error:', emailResult.message);
+                            alert('⚠️ Email notification error: ' + emailResult.message + '\n\nThe application was still saved. Please contact the administrator.');
                         }
                     } catch (emailErr) {
-                        console.warn('Email sending failed (non-critical):', emailErr);
+                        console.warn('Email sending failed:', emailErr);
+                        alert('⚠️ Could not send email notification: ' + emailErr.message + '\n\nThe application was still saved successfully.');
                     }
 
                     // 4. Show success screen
