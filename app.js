@@ -423,14 +423,6 @@ function setupButtons() {
         });
     }
 
-    // Form Prevention
-    if (form) {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            return false;
-        });
-    }
-
     // iPhone Safari fix:
     // Do NOT read the file (async) during submit, because Safari may block the submit
     // when it's no longer a direct user gesture. Cache the image when the user selects it.
